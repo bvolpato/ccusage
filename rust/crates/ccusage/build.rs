@@ -208,4 +208,5 @@ fn is_embedded_model(model: &str) -> bool {
         || model.starts_with("openai/")
         || model.starts_with("azure/")
         || model.starts_with("openrouter/openai/")
+        || model == "fireworks_ai/accounts/fireworks/routers/kimi-k2p6-turbo"
 }

@@ -572,6 +572,7 @@ fn fetch_pricing_json() -> std::io::Result<String> {
 #[cfg(test)]
 mod tests {
     use super::{Pricing, PricingMap, BUILD_TIME_PRICING_JSON, FALLBACK_PRICING_JSON};
+    use crate::{calculate_cost_for_usage, cli::CostMode, TokenUsageRaw};
 
     #[test]
     fn loads_embedded_claude_pricing() {
@@ -693,6 +694,34 @@ mod tests {
         assert_eq!(pricing.find("gpt-5.5").unwrap().fast_multiplier, 2.5);
         assert_eq!(pricing.find("gpt-5.4").unwrap().fast_multiplier, 2.0);
         assert_eq!(pricing.find("gpt-5.3-codex").unwrap().fast_multiplier, 2.0);
+    }
+
+    #[test]
+    fn embedded_pricing_includes_fireworks_kimi_k2p6_router() {
+        let pricing = PricingMap::load_embedded();
+        let model = "accounts/fireworks/routers/kimi-k2p6-turbo";
+        let kimi = pricing.find(model).unwrap();
+
+        assert_eq!(kimi.input, 0.95e-6);
+        assert_eq!(kimi.cache_create, 0.95e-6);
+        assert_eq!(kimi.cache_read, 0.16e-6);
+        assert_eq!(kimi.output, 4.0e-6);
+        assert!(kimi.cache_read_explicit);
+
+        let cost = calculate_cost_for_usage(
+            Some(model),
+            TokenUsageRaw {
+                input_tokens: 1_000_000,
+                cache_read_input_tokens: 1_000_000,
+                output_tokens: 1_000_000,
+                ..TokenUsageRaw::default()
+            },
+            None,
+            CostMode::Calculate,
+            Some(&pricing),
+        );
+
+        assert!((cost - 5.11).abs() < f64::EPSILON);
     }
 
     #[test]
